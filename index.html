@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小雨滴 · 专属桌面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        .phone-frame {
+            width: 360px;
+            max-width: 100%;
+            background: #fff;
+            border: 12px solid #e0e0e0;
+            border-radius: 45px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 25px;
+            border-radius: 20px;
+            background: #000;
+            z-index: 10;
+        }
+
+        .screen {
+            border-radius: 32px;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #a8d0e6 0%, #e3eeff 100%);
+            min-height: 700px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            padding: 25px 30px 10px 30px;
+        }
+
+        .pages-wrapper {
+            flex: 1;
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+        }
+        .pages-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        .page {
+            min-width: 100%;
+            scroll-snap-align: start;
+            padding: 10px 20px 30px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding-bottom: 20px;
+        }
+        .indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.2);
+            transition: background 0.3s;
+        }
+        .indicator.active {
+            background: rgba(0,0,0,0.6);
+        }
+
+        /* 毛玻璃通用样式 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 顶部小组件区域 */
+        .top-widgets {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            height: 160px;
+        }
+
+        /* 拍立得小组件 */
+        .polaroid-widget {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            max-width: 50%;
+            transform: rotate(-3deg);
+            position: relative;
+        }
+        .polaroid-widget::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%) rotate(2deg);
+            width: 40px;
+            height: 15px;
+            background: rgba(200, 200, 200, 0.6);
+            backdrop-filter: blur(2px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 2;
+        }
+        .polaroid-widget:active {
+            transform: scale(0.95) rotate(-3deg);
+        }
+        .polaroid-photo {
+            width: 100%;
+            height: 140px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 8px solid #fff;
+            border-bottom-width: 30px;
+            border-radius: 2px;
+            box-shadow: 2px 4px 12px rgba(0,0,0,0.1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .polaroid-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .polaroid-text {
+            display: none;
+        }
+
+        /* 个人信息小组件 (头像+表情+定位) */
+        .profile-widget {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .profile-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.6);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .profile-emojis {
+            font-size: 14px;
+            margin: 8px 0;
+            outline: none;
+            min-width: 50px;
+            text-align: center;
+        }
+        .profile-location {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,255,255,0.5);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: #555;
+        }
+        .profile-location span[contenteditable] {
+            outline: none;
+            min-width: 40px;
+        }
+
+        /* 音乐小组件 */
+        .music-widget {
+            width: 80%;
+            height: 160px;
+            position: relative;
+            overflow: visible;
+            margin: 0 auto 30px auto;
+        }
+
+        .music-widget .photo-area {
+            width: 100%;
+            height: 100px;
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .music-widget .landscape-frame {
+            width: calc(100% - 20px);
+            height: 100%;
+            background: #e9e9e9;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .music-widget .vinyl-frame {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            position: absolute;
+            right: 0;
+            top: 0;
+            z-index: 2;
+            overflow: hidden;
+            background: #f0f0f0;
+            transform: translateX(10px);
+            cursor: pointer;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .music-widget .vinyl-hole {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            background: #ffffff;
+            border-radius: 50%;
+            z-index: 3;
+        }
+
+        .music-widget .vinyl-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .music-widget .text-area {
+            color: #333333;
+            font-size: 12px;
+            line-height: 1.3;
+            width: 100%;
+            outline: none;
+        }
+
+        .photo-hint {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(4px);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #333;
+            pointer-events: none;
+            position: absolute;
+            text-align: center;
+        }
+
+        /* 故事小组件 */
+        .story-widget {
+            width: 80%;
+            height: 240px;
+            border-radius: 28px;
+            position: relative;
+            overflow: hidden;
+            margin: 0 auto 20px auto;
+        }
+
+        /* 底部整张大图 */
+        .story-widget .bg-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            background: #e9e9e9;
+            z-index: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .story-widget .bg-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+            border-radius: 20px;
+        }
+
+        /* 左上角小照片 */
+        .story-widget .top-left-photo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 110px;
+            height: 90px;
+            border-radius: 14px;
+            background: white;
+            overflow: hidden;
+            z-index: 2;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .story-widget .top-left-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        /* 右上角文字（完全不遮挡） */
+        .story-widget .top-right-text {
+            position: absolute;
+            top: 20px;
+            right: 15px;
+            width: 140px;
+            font-size: 11px;
+            color: #333;
+            line-height: 1.5;
+            z-index: 2;
+            outline: none;
+        }
+
+        /* 两个圆形头像（居中） */
+        .story-widget .avatars {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 110px;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            z-index: 3;
+        }
+        .story-widget .avatar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .story-widget .avatar-circle {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: white;
+            overflow: hidden;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .story-widget .avatar-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .story-widget .avatar-name {
+            font-size: 13px;
+            color: #222;
+            outline: none;
+        }
+
+        /* 底部文字（完全可见） */
+        .story-widget .bottom-text {
+            position: absolute;
+            bottom: 25px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 4;
+        }
+        .story-widget .bottom-main {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 4px;
+            outline: none;
+        }
+        .story-widget .bottom-location {
+            font-size: 12px;
+            color: #666;
+            outline: none;
+        }
+
+        /* APP 图标区域 */
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px 15px;
+            padding: 0 5px;
+        }
+        .app-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .app-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+        }
+        .app-item:active .app-icon {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .app-name {
+            font-size: 11px;
+            color: #444;
+            font-weight: 500;
+        }
+
+        /* 新毛玻璃音乐小组件 */
+        .new-music-widget {
+            width: 160px;
+            height: 140px;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 0 10px rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .new-music-top {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .new-album-cover {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: rgba(255,255,255,0.3);
+        }
+        .new-music-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .new-song-title {
+            font-size: 14px;
+            font-style: italic;
+            color: #333333;
+            font-weight: 500;
+        }
+        .new-song-subtitle {
+            font-size: 10px;
+            color: #555555;
+            opacity: 0.8;
+        }
+        .new-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+        }
+        .new-control-btn {
+            background: transparent;
+            border: none;
+            color: #333333;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+        .new-control-btn:hover {
+            opacity: 0.7;
+        }
+        .new-play-btn {
+            font-size: 22px;
+        }
+
+        /* 聊天小组件 */
+        .chat-widget {
+            width: 100%;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 0 auto;
+        }
+        .chat-widget .message {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            width: 100%;
+        }
+        .chat-widget .message-right {
+            flex-direction: row-reverse;
+        }
+        .chat-widget .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .chat-widget .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .chat-widget .bubble {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 22px;
+            padding: 10px 16px;
+            max-width: 180px;
+            position: relative;
+            box-shadow: 
+                0 4px 15px rgba(0, 0, 0, 0.05),
+                inset 0 0 10px rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            color: #333;
+            line-height: 1.5;
+            outline: none;
+        }
+        .chat-widget .bubble::after {
+            content: '';
+            position: absolute;
+            top: 12px;
+            width: 0;
+            height: 0;
+            border: 6px solid transparent;
+        }
+        .chat-widget .message-left .bubble::after {
+            left: -10px;
+            border-right-color: rgba(255, 255, 255, 0.35);
+            filter: blur(0.5px);
+        }
+        .chat-widget .message-right .bubble::after {
+            right: -10px;
+            border-left-color: rgba(255, 255, 255, 0.35);
+            filter: blur(0.5px);
+        }
+        .chat-widget .time {
+            font-size: 10px;
+            color: rgba(0,0,0,0.4);
+            margin-top: 4px;
+            outline: none;
+        }
+        .chat-widget .message-left .time {
+            margin-left: 10px;
+        }
+        .chat-widget .message-right .time {
+            text-align: right;
+            margin-right: 10px;
+        }
+
+        /* 隐藏的文件输入框 */
+        #fileInput {
+            display: none;
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 110;
+        }
+        .modal-box {
+            width: 85%;
+            max-width: 320px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .modal-box h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .modal-close {
+            text-align: center;
+            margin-top: 20px;
+            color: #888;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* 聊天窗口样式 */
+        .chat-box {
+            width: 90%; max-width: 350px; height: 80vh;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .chat-header {
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.5);
+            display: flex; justify-content: space-between;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .chat-header h3 { color: #333; font-size: 16px; }
+        .chat-content {
+            flex: 1; padding: 15px;
+            background: transparent;
+            overflow-y: auto;
+        }
+        .chat-message { margin-bottom: 15px; display: flex; }
+        .chat-message.user { justify-content: flex-end; }
+        .chat-bubble {
+            max-width: 75%; padding: 12px 16px;
+            border-radius: 20px;
+            background: #f0f0f0;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .chat-message.user .chat-bubble {
+            background: #333; color: white;
+        }
+        .chat-input-area {
+            padding: 15px; display: flex; gap: 10px;
+            background: rgba(255,255,255,0.5);
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        .chat-input {
+            flex: 1; padding: 10px 15px;
+            border: none; border-radius: 20px;
+            background: #f0f0f0;
+            outline: none; font-size: 14px;
+        }
+        .chat-send {
+            width: 40px; height: 40px;
+            border-radius: 50%; background: #333;
+            color: white; border: none; cursor: pointer;
+            font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* API 设置输入框 */
+        .api-input, .api-select {
+            width: 100%; padding: 12px 15px; margin-bottom: 12px;
+            border: 1px solid #eee; border-radius: 12px;
+            background: #f9f9f9; outline: none;
+        }
+        .api-btn {
+            width: 100%; padding: 12px; background: #333;
+            color: white; border: none; border-radius: 12px;
+            margin-bottom: 10px; cursor: pointer; font-weight: 500;
+        }
+
+        /* 加载界面样式 */
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            z-index: 9999;
+            overflow: hidden;
+            font-family: "PingFang SC", sans-serif;
+            transition: opacity 1s ease;
+            border-radius: 32px;
+        }
+        .cloud-container {
+            position: absolute;
+            top: 60px;
+            width: 100%;
+            height: 150px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .dark-cloud {
+            position: absolute;
+            background: #78909c;
+            border-radius: 40px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .dark-cloud::before, .dark-cloud::after {
+            content: '';
+            position: absolute;
+            background: #78909c;
+            border-radius: 50%;
+        }
+        .dark-cloud1 {
+            width: 200px; height: 70px;
+            top: 30px; left: 50%;
+            margin-left: -100px;
+            animation: cloudFadeIn 2.5s ease-in-out forwards;
+            opacity: 0;
+        }
+        .dark-cloud1::before {
+            width: 90px; height: 90px;
+            top: -40px; left: 30px;
+        }
+        .dark-cloud1::after {
+            width: 110px; height: 110px;
+            top: -55px; right: 30px;
+        }
+        @keyframes cloudFadeIn {
+            0% { opacity: 0; filter: blur(20px); transform: scale(0.8); }
+            100% { opacity: 0.9; filter: blur(0); transform: scale(1); }
+        }
+
+        #loading-screen .bg-line {
+            position: absolute;
+            background: rgba(120, 120, 120, 0.08);
+            transform-origin: center;
+        }
+        #loading-screen .bg-line.horizontal {
+            width: 100%;
+            height: 1px;
+        }
+        #loading-screen .bg-line.vertical {
+            width: 1px;
+            height: 100%;
+        }
+        #loading-screen .bg-line.diagonal {
+            width: 150%;
+            height: 1px;
+            transform: rotate(45deg);
+        }
+        #loading-screen .bg-line.diagonal-2 {
+            width: 150%;
+            height: 1px;
+            transform: rotate(-45deg);
+        }
+
+        #loading-screen .float-deco {
+            position: absolute;
+            color: rgba(120, 120, 120, 0.4);
+            font-size: 16px;
+            animation: float 9s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0%,100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-18px) rotate(6deg); }
+        }
+        #loading-screen .twinkle-dot {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: #888;
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: twinkle 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes twinkle {
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        #rainCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #loading-screen .main-words {
+            position: absolute;
+            top: 35%;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+        #loading-screen .word-item {
+            text-align: center;
+            opacity: 0;
+            transform: scale(0.4);
+            filter: blur(10px);
+            transition: all 1.2s ease-out;
+        }
+        #loading-screen .word-item.show {
+            opacity: 1;
+            transform: scale(1);
+            filter: blur(0);
+        }
+
+        #loading-screen .zh {
+            font-size: 32px;
+            color: #555;
+            font-weight: 200;
+            letter-spacing: 1px;
+        }
+        #loading-screen .en {
+            font-size: 12px;
+            color: #666;
+            letter-spacing: 2px;
+            margin-top: 8px;
+            opacity: 0.75;
+            font-weight: 300;
+        }
+
+        #loading-screen .load-container {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 5px;
+            background: #ddd;
+            border-radius: 0;
+            overflow: visible;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        #loading-screen .load-container.show { opacity: 1; }
+
+        #loading-screen .load-progress {
+            position: relative;
+            width: 0;
+            height: 100%;
+            background: #222;
+            animation: loadMove 4s linear forwards;
+        }
+
+        #loading-screen .load-progress::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 10px;
+            height: 10px;
+            background: #222;
+            transform: translateY(-50%) rotate(-45deg);
+            border-radius: 2px;
+        }
+        #loading-screen .load-progress::before {
+            content: '';
+            position: absolute;
+            right: -1px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-45deg);
+            width: 10px;
+            height: 10px;
+            background: #222;
+            border-radius: 50%;
+        }
+
+        @keyframes loadMove {
+            0% { width: 0; }
+            100% { width: 100%; }
+        }
+
+        #loading-screen .text-quote {
+            position: absolute;
+            bottom: 22%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 1s ease;
+            width: 100%;
+        }
+        #loading-screen .text-quote.show { opacity: 1; }
+        #loading-screen .quote-cn {
+            font-size: 14px;
+            color: #555;
+            letter-spacing: 1px;
+            display: block;
+            font-weight: 200;
+        }
+        #loading-screen .quote-en {
+            font-size: 12px;
+            color: #666;
+            opacity: 0.7;
+            margin-top: 8px;
+            display: block;
+            letter-spacing: 1px;
+            font-weight: 300;
+        }
+
+        #loading-screen .author-info {
+            position: absolute;
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        #loading-screen .author-info.show { opacity: 1; }
+        #loading-screen .au-cn {
+            font-size: 12px;
+            color: #555;
+            font-weight: 200;
+        }
+        #loading-screen .au-en {
+            font-size: 11px;
+            color: #666;
+            opacity: 0.6;
+            letter-spacing: 2px;
+            margin-top: 5px;
+            font-weight: 300;
+        }
+
+        /* Edit Mode Styles */
+        @keyframes jiggle1 {
+            0% { transform: rotate(-1.5deg); }
+            50% { transform: rotate(1.5deg); }
+            100% { transform: rotate(-1.5deg); }
+        }
+        @keyframes jiggle2 {
+            0% { transform: rotate(1.5deg); }
+            50% { transform: rotate(-1.5deg); }
+            100% { transform: rotate(1.5deg); }
+        }
+
+        .edit-mode .draggable-item {
+            animation: jiggle1 0.25s infinite;
+            z-index: 10;
+        }
+        .edit-mode .draggable-item:nth-child(even) {
+            animation: jiggle2 0.25s infinite;
+        }
+
+        .delete-badge {
+            display: none;
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            width: 24px;
+            height: 24px;
+            background: rgba(209, 209, 214, 0.95);
+            backdrop-filter: blur(4px);
+            color: #333;
+            border-radius: 50%;
+            text-align: center;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .delete-badge::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 2px;
+            background: #333;
+            border-radius: 1px;
+        }
+        .edit-mode .delete-badge {
+            display: block;
+        }
+
+        .draggable-item {
+            position: relative;
+        }
+
+        .app-item .delete-badge {
+            top: -6px;
+            left: -6px;
+        }
+        .story-widget .delete-badge {
+            top: 8px;
+            left: 8px;
+        }
+        .chat-widget .delete-badge {
+            top: 0px;
+            left: 0px;
+        }
+
+        /* Top bar in edit mode */
+        .edit-top-bar {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            padding: 0 25px;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+        .edit-mode .edit-top-bar {
+            display: flex;
+        }
+        .edit-btn {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 6px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .add-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            line-height: 1;
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+
+<body>
+<div class="phone-frame">
+    <div class="screen">
+        <!-- 加载界面 -->
+        <div id="loading-screen">
+            <div class="bg-line horizontal" style="top: 25%;"></div>
+            <div class="bg-line horizontal" style="top: 75%;"></div>
+            <div class="bg-line vertical" style="left: 25%;"></div>
+            <div class="bg-line vertical" style="left: 75%;"></div>
+            <div class="bg-line diagonal" style="top: 50%;"></div>
+            <div class="bg-line diagonal-2" style="top: 50%;"></div>
+
+            <div class="cloud-container">
+                <div class="dark-cloud dark-cloud1"></div>
+            </div>
+
+            <div class="float-deco" style="top:15%;left:9%;animation-delay:0s;">✦</div>
+            <div class="float-deco" style="top:22%;right:11%;animation-delay:1s;">✧</div>
+            <div class="float-deco" style="top:68%;left:7%;animation-delay:2s;">⋆</div>
+            <div class="float-deco" style="top:75%;right:9%;animation-delay:1.5s;">✩</div>
+
+            <div class="twinkle-dot" style="top:20%;left:26%;"></div>
+            <div class="twinkle-dot" style="top:62%;left:78%;"></div>
+            <div class="twinkle-dot" style="top:38%;left:72%;"></div>
+
+            <canvas id="rainCanvas"></canvas>
+
+            <div class="main-words">
+                <div class="word-item" id="w1">
+                    <div class="zh">小</div>
+                    <div class="en">𝑳𝒊𝒕𝒕𝒍𝒆</div>
+                </div>
+                <div class="word-item" id="w2">
+                    <div class="zh">雨</div>
+                    <div class="en">𝑹𝒂𝒊𝒏</div>
+                </div>
+                <div class="word-item" id="w3">
+                    <div class="zh">滴</div>
+                    <div class="en">𝑫𝒓𝒐𝒑</div>
+                </div>
+            </div>
+
+            <div class="load-container">
+                <div class="load-progress"></div>
+            </div>
+
+            <div class="text-quote">
+                <div class="quote-cn">希望你能遇到人生中的开心雨</div>
+                <div class="quote-en">𝑯𝒐𝒑𝒆 𝒚𝒐𝒖 𝒎𝒆𝒆𝒕 𝒕𝒉𝒆 𝒉𝒂𝒑𝒑𝒚 𝒓𝒂𝒊𝒏 𝒊𝒏 𝒍𝒊𝒇𝒆</div>
+            </div>
+
+            <div class="author-info">
+                <div class="au-cn">创作者：@萌萌雨</div>
+                <div class="au-en">𝑪𝒓𝒆𝒂𝒕𝒐𝒓 · 𝑴𝒆𝒏𝒈 𝑴𝒆𝒏𝒈 𝒀𝒖</div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <span id="clock">09:41</span>
+            <span>📶 🔋</span>
+        </div>
+
+        <div class="pages-wrapper" id="pagesWrapper">
+            <!-- 第一页 -->
+            <div class="page">
+                <!-- 顶部小组件：拍立得 + 个人信息 -->
+                <div class="top-widgets">
+                    <div class="polaroid-widget" onclick="triggerPhotoUpload('polaroidImg')">
+                        <div class="polaroid-photo">
+                            <img id="polaroidImg" src="" alt="polaroid">
+                        </div>
+                    </div>
+
+                    <div class="profile-widget">
+                        <div class="profile-avatar" onclick="triggerPhotoUpload('avatarImg')">
+                            <img id="avatarImg" src="" alt="avatar">
+                            <div class="photo-hint" id="avatarHint" style="font-size:10px;">头像</div>
+                        </div>
+                        <div class="profile-emojis" contenteditable="true">✨🌟💫</div>
+                        <div class="profile-location">
+                            <span>📍</span>
+                            <span contenteditable="true">我的位置</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; justify-content: center;">
+                    <!-- 新音乐小组件 -->
+                    <div class="new-music-widget">
+                        <div class="new-music-top">
+                            <div class="new-album-cover" onclick="triggerPhotoUpload('newAlbumImg')" style="cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative;">
+                                <img id="newAlbumImg" src="" alt="专辑封面" style="width: 100%; height: 100%; border-radius: 12px; object-fit: cover; display: none;">
+                                <div class="photo-hint" id="newAlbumHint" style="font-size: 8px; padding: 2px 4px;">封面</div>
+                            </div>
+                            <div class="new-music-info">
+                                <div class="new-song-title" contenteditable="true">Fatal love</div>
+                                <div class="new-song-subtitle" contenteditable="true">✧⁺ Dream cycle⁺·</div>
+                            </div>
+                        </div>
+                        <div class="new-controls">
+                            <button class="new-control-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                                </svg>
+                            </button>
+                            <button class="new-control-btn new-play-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                            </button>
+                            <button class="new-control-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- APP 图标网格 -->
+                    <div class="app-grid" style="grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 0;">
+                        <div class="app-item" onclick="openChat()">
+                            <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg></div>
+                            <span class="app-name">聊天</span>
+                        </div>
+                        <div class="app-item" onclick="openApiConfig()">
+                            <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
+                            <span class="app-name">设置</span>
+                        </div>
+                        <div class="app-item">
+                            <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></div>
+                            <span class="app-name">世界书</span>
+                        </div>
+                        <div class="app-item">
+                            <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></div>
+                            <span class="app-name">美化</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 音乐小组件 (替换原来的大照片组件) -->
+                <div class="music-widget">
+                    <div class="photo-area">
+                        <!-- 风景相框（底层） -->
+                        <div class="landscape-frame" onclick="triggerPhotoUpload('landscapeImg')">
+                            <img id="landscapeImg" src="" style="width:100%;height:100%;object-fit:cover;display:none;" alt="风景图">
+                            <div class="photo-hint" id="landscapeHint">点击添加风景</div>
+                        </div>
+                        <!-- CD相框（顶层，压在风景框上） -->
+                        <div class="vinyl-frame" onclick="triggerPhotoUpload('vinylImg')">
+                            <img id="vinylImg" class="vinyl-img" src="" alt="CD封面">
+                            <div class="photo-hint" id="vinylHint" style="font-size:10px; padding:4px 8px;">CD</div>
+                            <div class="vinyl-hole"></div>
+                        </div>
+                    </div>
+
+                    <div class="text-area" contenteditable="true">
+                        点击这里输入文字...
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第二页 -->
+            <div class="page">
+                <!-- 故事小组件 -->
+                <div class="story-widget">
+                    <!-- 底部大背景图 -->
+                    <div class="bg-image" onclick="triggerPhotoUpload('storyBgImg')">
+                        <img id="storyBgImg" src="" alt="背景图">
+                        <div class="photo-hint" id="storyBgHint">点击添加背景</div>
+                    </div>
+
+                    <!-- 左上角小照片 -->
+                    <div class="top-left-photo" onclick="triggerPhotoUpload('storySmallImg')">
+                        <img id="storySmallImg" src="" alt="小图">
+                        <div class="photo-hint" id="storySmallHint" style="font-size:10px;">小图</div>
+                    </div>
+
+                    <!-- 右上角文字 -->
+                    <div class="top-right-text" contenteditable="true">
+                        点击输入文字...
+                    </div>
+
+                    <!-- 两个头像 -->
+                    <div class="avatars">
+                        <div class="avatar">
+                            <div class="avatar-circle" onclick="triggerPhotoUpload('storyAvatar1Img')">
+                                <img id="storyAvatar1Img" src="" alt="头像1">
+                                <div class="photo-hint" id="storyAvatar1Hint" style="font-size:10px;">头像1</div>
+                            </div>
+                            <div class="avatar-name" contenteditable="true">名字1</div>
+                        </div>
+                        <div class="avatar">
+                            <div class="avatar-circle" onclick="triggerPhotoUpload('storyAvatar2Img')">
+                                <img id="storyAvatar2Img" src="" alt="头像2">
+                                <div class="photo-hint" id="storyAvatar2Hint" style="font-size:10px;">头像2</div>
+                            </div>
+                            <div class="avatar-name" contenteditable="true">名字2</div>
+                        </div>
+                    </div>
+
+                    <!-- 底部文字 -->
+                    <div class="bottom-text">
+                        <div class="bottom-main" contenteditable="true">点击输入主文字...</div>
+                        <div class="bottom-location" contenteditable="true">📍 点击输入位置</div>
+                    </div>
+                </div>
+
+                <!-- APP 图标网格 -->
+                <div class="app-grid" style="margin-bottom: 20px;">
+                    <div class="app-item">
+                        <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21.5 4c0 0-2 .5-3.5 2L14.5 9.5 6.3 7.7l-1.6 1.6 5.4 3.8-3.6 3.6-2.8-.7-1.5 1.5 4.2 1.4 1.4 4.2 1.5-1.5-.7-2.8 3.6-3.6 3.8 5.4 1.6-1.6z"></path></svg></div>
+                        <span class="app-name">旅游</span>
+                    </div>
+                    <div class="app-item">
+                        <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8a3.5 3.5 0 0 0-5 0l-.5.5-.5-.5a3.5 3.5 0 0 0-5 5l5.5 5.5 5.5-5.5A3.5 3.5 0 0 0 17 8z"></path><path d="M22 12a3.5 3.5 0 0 0-5 0l-.5.5-.5-.5a3.5 3.5 0 0 0-5 5l5.5 5.5 5.5-5.5A3.5 3.5 0 0 0 22 12z"></path></svg></div>
+                        <span class="app-name">情侣空间</span>
+                    </div>
+                    <div class="app-item">
+                        <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg></div>
+                        <span class="app-name">豆瓣</span>
+                    </div>
+                    <div class="app-item">
+                        <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>
+                        <span class="app-name">淘宝</span>
+                    </div>
+                    <div class="app-item">
+                        <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg></div>
+                        <span class="app-name">网易云</span>
+                    </div>
+                    <div class="app-item">
+                        <div class="app-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                        <span class="app-name">时光机</span>
+                    </div>
+                </div>
+
+                <!-- 聊天小组件 -->
+                <div class="chat-widget">
+                    <!-- 对方消息 -->
+                    <div class="message message-left">
+                        <div class="avatar" onclick="triggerPhotoUpload('chatAvatar1Img')">
+                            <img id="chatAvatar1Img" src="" alt="头像">
+                            <div class="photo-hint" id="chatAvatar1Hint" style="font-size:10px;">头像</div>
+                        </div>
+                        <div>
+                            <div class="bubble" contenteditable="true">点击输入文字...</div>
+                            <div class="time" contenteditable="true">00:00:00</div>
+                        </div>
+                    </div>
+
+                    <!-- 自己的消息 -->
+                    <div class="message message-right">
+                        <div class="avatar" onclick="triggerPhotoUpload('chatAvatar2Img')">
+                            <img id="chatAvatar2Img" src="" alt="头像">
+                            <div class="photo-hint" id="chatAvatar2Hint" style="font-size:10px;">头像</div>
+                        </div>
+                        <div>
+                            <div class="bubble" contenteditable="true">点击输入文字...</div>
+                            <div class="time" contenteditable="true">00:00:00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 页面指示器 -->
+        <div class="screen-indicators" id="screenIndicators">
+            <div class="indicator active"></div>
+            <div class="indicator"></div>
+        </div>
+
+        <!-- 隐藏的文件上传 -->
+        <input type="file" id="fileInput" accept="image/*">
+
+        <!-- 聊天弹窗 -->
+        <div class="modal" id="chatModal">
+            <div class="chat-box">
+                <div class="chat-header">
+                    <h3>聊天</h3>
+                    <span onclick="closeChat()" style="cursor:pointer; font-size:20px;">×</span>
+                </div>
+                <div class="chat-content" id="chatContent">
+                    <div class="chat-message">
+                        <div class="chat-bubble">你好 ✨</div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="输入消息...">
+                    <button class="chat-send" onclick="sendMessage()">↑</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- API 设置弹窗 -->
+        <div class="modal" id="apiModal">
+            <div class="modal-box">
+                <h3>设置</h3>
+                <input class="api-input" id="api_url" placeholder="API URL">
+                <input class="api-input" id="api_key" placeholder="API Key">
+                <button class="api-btn" onclick="fetchModels()">获取模型</button>
+                <select class="api-select" id="model_select"></select>
+                <button class="api-btn" onclick="saveApiConfig()">保存</button>
+                <div class="modal-close" onclick="closeApiConfig()">关闭</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// ========== 加载界面逻辑 ==========
+const canvas = document.getElementById('rainCanvas');
+const ctx = canvas.getContext('2d');
+const screenEl = document.querySelector('.screen');
+canvas.width = screenEl.clientWidth;
+canvas.height = screenEl.clientHeight;
+
+let rainArr = [];
+class Rain {
+    constructor(){
+        this.x = (canvas.width / 2) - 90 + Math.random() * 180;
+        this.y = 120 + Math.random() * 20;
+        this.len = Math.random() * 15 + 6;
+        this.speed = Math.random() * 4 + 2.5;
+        this.alpha = Math.random() * 0.15 + 0.1;
+    }
+    draw(){
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.lineTo(this.x, this.y + this.len);
+        ctx.strokeStyle = `rgba(100, 100, 100, ${this.alpha})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+    update(){
+        this.y += this.speed;
+        if(this.y > canvas.height){
+            this.y = 120 + Math.random() * 20;
+            this.x = (canvas.width / 2) - 90 + Math.random() * 180;
+        }
+        this.draw();
+    }
+}
+for(let i = 0; i < 60; i++) rainArr.push(new Rain());
+let rainAnimId;
+function rainLoop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    rainArr.forEach(r=>r.update());
+    rainAnimId = requestAnimationFrame(rainLoop);
+}
+setTimeout(() => {
+    rainLoop();
+}, 2000);
+
+const w1 = document.getElementById('w1');
+const w2 = document.getElementById('w2');
+const w3 = document.getElementById('w3');
+const loadBox = document.querySelector('.load-container');
+const quoteTxt = document.querySelector('.text-quote');
+const authorTxt = document.querySelector('.author-info');
+
+setTimeout(()=>w1.classList.add('show'), 300);
+setTimeout(()=>w2.classList.add('show'), 700);
+setTimeout(()=>w3.classList.add('show'), 1100);
+
+setTimeout(()=>{
+    loadBox.classList.add('show');
+    quoteTxt.classList.add('show');
+    authorTxt.classList.add('show');
+}, 2200);
+
+// 进度条动画是 4s，所以 2200 + 4000 = 6200ms 后加载完成
+setTimeout(() => {
+    const loadingScreen = document.getElementById('loading-screen');
+    loadingScreen.style.opacity = '0';
+    setTimeout(() => {
+        loadingScreen.style.display = 'none';
+        cancelAnimationFrame(rainAnimId); // 停止雨滴动画节省性能
+    }, 1000);
+}, 6500);
+
+// ========== 时钟更新 ==========
+function updateClock() {
+    const now = new Date();
+    let h = now.getHours().toString().padStart(2, '0');
+    let m = now.getMinutes().toString().padStart(2, '0');
+    document.getElementById('clock').innerText = `${h}:${m}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ========== 页面滑动指示器 ==========
+const pagesWrapper = document.getElementById('pagesWrapper');
+const indicators = document.querySelectorAll('.indicator');
+pagesWrapper.addEventListener('scroll', () => {
+    const index = Math.round(pagesWrapper.scrollLeft / pagesWrapper.clientWidth);
+    indicators.forEach((ind, i) => {
+        ind.classList.toggle('active', i === index);
+    });
+});
+
+// ========== 照片更换功能 ==========
+let currentTargetImgId = '';
+const fileInput = document.getElementById('fileInput');
+
+function triggerPhotoUpload(imgId) {
+    currentTargetImgId = imgId;
+    fileInput.click();
+}
+
+fileInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file && currentTargetImgId) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = document.getElementById(currentTargetImgId);
+            img.src = event.target.result;
+            img.style.display = 'block';
+            
+            // 隐藏对应的提示文字
+            let hintId = currentTargetImgId.replace('Img', 'Hint');
+            const hint = document.getElementById(hintId);
+            if (hint) hint.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+    this.value = '';
+});
+
+// ========== 弹窗控制 ==========
+function openChat(){document.getElementById('chatModal').style.display='flex'}
+function closeChat(){document.getElementById('chatModal').style.display='none'}
+function openApiConfig(){document.getElementById('apiModal').style.display='flex'}
+function closeApiConfig(){document.getElementById('apiModal').style.display='none'}
+
+// ========== AI 聊天功能 ==========
+let AI_CONFIG = { api_url: "", api_key: "", model: "" };
+
+async function fetchModels() {
+    const u = document.getElementById('api_url').value.trim();
+    const k = document.getElementById('api_key').value.trim();
+    if (!u || !k) return alert('请输入 API URL 和 Key');
+
+    try {
+        const res = await fetch(u.replace('/chat/completions', '/models'), {
+            headers: { Authorization: 'Bearer ' + k }
+        });
+        const data = await res.json();
+        const sel = document.getElementById('model_select');
+        sel.innerHTML = '';
+        data.data.forEach(m => {
+            const o = document.createElement('option');
+            o.value = m.id;
+            o.innerText = m.id;
+            sel.appendChild(o);
+        });
+        alert('获取成功！');
+    } catch (e) {
+        alert('获取模型失败');
+    }
+}
+
+function saveApiConfig() {
+    AI_CONFIG.api_url = document.getElementById('api_url').value.trim();
+    AI_CONFIG.api_key = document.getElementById('api_key').value.trim();
+    AI_CONFIG.model = document.getElementById('model_select').value;
+    alert('已保存！');
+    closeApiConfig();
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    const chatContent = document.getElementById('chatContent');
+    const userMsg = document.createElement('div');
+    userMsg.className = 'chat-message user';
+    userMsg.innerHTML = `<div class="chat-bubble">${msg}</div>`;
+    chatContent.appendChild(userMsg);
+    input.value = '';
+
+    if (!AI_CONFIG.api_url || !AI_CONFIG.api_key || !AI_CONFIG.model) {
+        const reply = document.createElement('div');
+        reply.className = 'chat-message';
+        reply.innerHTML = `<div class="chat-bubble">请先配置 API 设置。</div>`;
+        chatContent.appendChild(reply);
+        chatContent.scrollTop = chatContent.scrollHeight;
+        return;
+    }
+
+    try {
+        const res = await fetch(AI_CONFIG.api_url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + AI_CONFIG.api_key
+            },
+            body: JSON.stringify({
+                model: AI_CONFIG.model,
+                messages: [{ role: 'user', content: msg }]
+            })
+        });
+        const data = await res.json();
+        const aiMsg = data.choices[0].message.content;
+        const reply = document.createElement('div');
+        reply.className = 'chat-message';
+        reply.innerHTML = `<div class="chat-bubble">${aiMsg}</div>`;
+        chatContent.appendChild(reply);
+    } catch (e) {
+        const reply = document.createElement('div');
+        reply.className = 'chat-message';
+        reply.innerHTML = `<div class="chat-bubble">请求失败。</div>`;
+        chatContent.appendChild(reply);
+    }
+    chatContent.scrollTop = chatContent.scrollHeight;
+}
+
+document.getElementById('chatInput').addEventListener('keypress',e=>{
+    if(e.key==='Enter')sendMessage()
+})
+
+// ========== 拖拽与编辑模式 (iOS Jiggle Mode) ==========
+let isEditMode = false;
+let sortables = [];
+
+function initEditMode() {
+    // 1. 添加 draggable-item 类和删除按钮
+    document.querySelectorAll('.polaroid-widget, .profile-widget, .new-music-widget, .music-widget, .story-widget, .chat-widget, .app-item').forEach(el => {
+        el.classList.add('draggable-item');
+        const delBtn = document.createElement('div');
+        delBtn.className = 'delete-badge';
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
+            el.remove();
+        };
+        
+        if (el.classList.contains('app-item')) {
+            const icon = el.querySelector('.app-icon');
+            if (icon) {
+                icon.style.position = 'relative';
+                icon.appendChild(delBtn);
+            } else {
+                el.appendChild(delBtn);
+            }
+        } else {
+            el.appendChild(delBtn);
+        }
+    });
+
+    // 2. 初始化 SortableJS
+    if (typeof Sortable !== 'undefined') {
+        const commonOptions = {
+            group: 'shared-all', // 所有容器使用同一个组，允许 app 和小组件互相拖拽换位
+            animation: 200,
+            disabled: true,
+            delay: 150,
+            delayOnTouchOnly: true,
+            scroll: true,
+            scrollSensitivity: 60,
+            scrollSpeed: 15,
+            bubbleScroll: true,
+            ghostClass: 'sortable-ghost'
+        };
+
+        // 让所有容器都可以互相拖拽
+        document.querySelectorAll('.page, .top-widgets, .app-grid, .page > div[style*="display: flex"]').forEach(container => {
+            sortables.push(new Sortable(container, commonOptions));
+        });
+    }
+
+    // 3. 长按检测 (任意位置)
+    let pressTimer;
+    let isDragging = false;
+    let startX, startY;
+
+    const startPress = (e) => {
+        if (isEditMode) return;
+        const touch = e.touches ? e.touches[0] : e;
+        startX = touch.clientX;
+        startY = touch.clientY;
+        isDragging = false;
+        
+        pressTimer = setTimeout(() => {
+            if (!isDragging) enterEditMode();
+        }, 600); // 600ms 长按进入编辑模式
+    };
+
+    const movePress = (e) => {
+        if (!pressTimer) return;
+        const touch = e.touches ? e.touches[0] : e;
+        if (Math.abs(touch.clientX - startX) > 10 || Math.abs(touch.clientY - startY) > 10) {
+            isDragging = true;
+            clearTimeout(pressTimer);
+        }
+    };
+
+    const cancelPress = () => {
+        clearTimeout(pressTimer);
+    };
+
+    document.addEventListener('touchstart', startPress, {passive: true});
+    document.addEventListener('touchmove', movePress, {passive: true});
+    document.addEventListener('touchend', cancelPress);
+    
+    document.addEventListener('mousedown', startPress);
+    document.addEventListener('mousemove', movePress);
+    document.addEventListener('mouseup', cancelPress);
+
+    // 4. 拦截点击事件
+    document.addEventListener('click', (e) => {
+        if (isEditMode) {
+            if (!e.target.classList.contains('delete-badge') && !e.target.closest('.edit-top-bar')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }, true);
+}
+
+function enterEditMode() {
+    if (isEditMode) return;
+    isEditMode = true;
+    document.body.classList.add('edit-mode');
+    
+    let topBar = document.getElementById('edit-top-bar');
+    if(!topBar) {
+        topBar = document.createElement('div');
+        topBar.id = 'edit-top-bar';
+        topBar.className = 'edit-top-bar';
+        topBar.innerHTML = `
+            <div class="edit-btn add-btn" onclick="alert('添加小组件功能开发中...')">+</div>
+            <div class="edit-btn" onclick="exitEditMode()">完成</div>
+        `;
+        document.querySelector('.screen').appendChild(topBar);
+    }
+    
+    sortables.forEach(s => s.option('disabled', false));
+    
+    if (navigator.vibrate) navigator.vibrate(50);
+}
+
+function exitEditMode() {
+    isEditMode = false;
+    document.body.classList.remove('edit-mode');
+    sortables.forEach(s => s.option('disabled', true));
+}
+
+initEditMode();
+</script>
+</body>
+</html>
